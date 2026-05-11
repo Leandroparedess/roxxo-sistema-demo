@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: roxxo-sistema-demo
+    runtime: static
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: false

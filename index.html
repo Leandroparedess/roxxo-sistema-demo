@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ROXXO | Sistema de Gestion</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">RX</div>
+        <div>
+          <strong>ROXXO</strong>
+          <span>Club Roxxo</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Secciones">
+        <button class="nav-link active" data-view="dashboard">Panel</button>
+        <button class="nav-link" data-view="cajas">Cajas</button>
+        <button class="nav-link" data-view="ingreso">Ingreso</button>
+        <button class="nav-link" data-view="bar">Bar</button>
+        <button class="nav-link" data-view="mesas">Mesas</button>
+        <button class="nav-link" data-view="stock">Stock</button>
+        <button class="nav-link" data-view="gastos">Gastos</button>
+        <button class="nav-link" data-view="reportes">Reportes</button>
+      </nav>
+    </aside>
+
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Noche actual</p>
+          <h1 id="view-title">Panel</h1>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button" id="reset-demo" title="Reiniciar datos">R</button>
+          <button class="primary-button" id="close-night">Cerrar noche</button>
+        </div>
+      </header>
+
+      <section id="alert-area" class="alert-area" aria-live="polite"></section>
+      <section id="view-root" class="view-root"></section>
+    </main>
+    <div class="watermark">Creado por Leandro Paredes - Prueba para sistema Club Roxxo</div>
+
+    <template id="modal-template">
+      <div class="modal-backdrop">
+        <div class="modal">
+          <div class="modal-head">
+            <h2></h2>
+            <button class="icon-button modal-close" title="Cerrar">X</button>
+          </div>
+          <div class="modal-body"></div>
+        </div>
+      </div>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

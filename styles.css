@@ -559,6 +559,12 @@ h3 {
   font-weight: 900;
   z-index: 35;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.fab.open {
+  transform: rotate(45deg);
+  background: var(--danger);
 }
 
 .fab-menu {

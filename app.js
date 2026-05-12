@@ -368,6 +368,7 @@ function renderNav(role) {
 }
 
 function navigateTo(view) {
+  closeFabMenu();
   if (view && view !== state.currentView) navHistory.push(state.currentView);
   state.currentView = view;
   render();
@@ -381,6 +382,7 @@ function goBack() {
 }
 
 function focusControlAction(target) {
+  closeFabMenu();
   const map = {
     money: "#money-movement-form",
     void: "#void-form",
@@ -391,6 +393,22 @@ function focusControlAction(target) {
   element.closest(".panel")?.classList.add("focus-panel");
   element.scrollIntoView({ behavior: "smooth", block: "center" });
   setTimeout(() => element.closest(".panel")?.classList.remove("focus-panel"), 1800);
+}
+
+function closeFabMenu() {
+  const menu = document.querySelector("#fab-menu");
+  const button = document.querySelector("#fab-action");
+  if (!menu) return;
+  menu.hidden = true;
+  button?.classList.remove("open");
+}
+
+function toggleFabMenu() {
+  const menu = document.querySelector("#fab-menu");
+  const button = document.querySelector("#fab-action");
+  if (!menu) return;
+  menu.hidden = !menu.hidden;
+  button?.classList.toggle("open", !menu.hidden);
 }
 
 const titles = {
@@ -1907,14 +1925,13 @@ function bindViewEvents() {
 
   document.querySelector("#fab-action")?.addEventListener("click", () => {
     if (!session.role) return;
-    const menu = document.querySelector("#fab-menu");
-    if (menu) menu.hidden = !menu.hidden;
+    toggleFabMenu();
   });
 
   document.querySelectorAll("[data-fab-target]").forEach((button) => {
     button.addEventListener("click", () => {
       const target = button.dataset.fabTarget;
-      document.querySelector("#fab-menu").hidden = true;
+      closeFabMenu();
       navigateTo("control");
       setTimeout(() => focusControlAction(target), 0);
     });
@@ -2934,6 +2951,18 @@ function resetDemo() {
   barCart = [];
   render();
 }
+
+document.addEventListener("click", (event) => {
+  const menu = document.querySelector("#fab-menu");
+  const button = document.querySelector("#fab-action");
+  if (!menu || menu.hidden) return;
+  if (menu.contains(event.target) || button?.contains(event.target)) return;
+  closeFabMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeFabMenu();
+});
 
 function closeNight() {
   const openBoxes = state.boxes.filter((box) => box.status === "open");

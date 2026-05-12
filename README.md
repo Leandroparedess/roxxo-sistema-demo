@@ -26,13 +26,20 @@ npm run check
 
 ## Modulos incluidos
 
+- Jornada ROXXO: apertura y cierre de cada noche operativa de fin de semana.
+- Apertura de caja con responsable, efectivo inicial y hora de apertura.
+- Cierre de caja con arqueo profesional: esperado, contado, diferencia y observacion.
+- Bloqueos operativos: no se puede vender con la jornada o la caja cerrada.
+- Cierre general: no permite cerrar la noche si quedan cajas abiertas.
 - Acceso por puesto: administrador, caja bebidas, ingreso y mozos.
 - Acceso por puesto ampliado: administrador, caja bebidas, ingreso, puerta, mozos y deposito.
 - Vista Control para manejar la noche desde celular: corte de alcohol, palabra de comanda, retiros, anulaciones y conteo de caja.
 - Interfaz tipo software de gestion: compacta, modular, con barra de estado y navegacion inferior en celular.
 - Arqueo profesional por caja con esperado, contado y diferencia.
 - Tickets/comandas numeradas para ventas de barra.
+- Tickets/comandas numeradas para cobros de mesa.
 - Anulaciones con estado pendiente, aprobada o rechazada.
+- Anulaciones asociadas a caja/ticket para descontar del arqueo.
 - Conteo real de stock contra stock teorico.
 - Configuracion de datos maestros: productos, cajas, entradas, RRPP, tarjetas VIP, medios de pago y ubicaciones.
 - Exportacion CSV del cierre por caja.
@@ -59,3 +66,14 @@ npm run check
 ## Nota
 
 Para convertirlo en un sistema online multiusuario real, el siguiente paso es agregar backend, base de datos y autenticacion. Esta version ya deja lista la operativa principal para probar el flujo completo de una noche.
+
+## Flujo recomendado
+
+1. Entrar como Administrador.
+2. Ir a Control y abrir/guardar la jornada ROXXO.
+3. Ir a Cajas y abrir cada caja con cajero y efectivo inicial.
+4. Operar ventas desde Ingreso, Bar y Mesas.
+5. Solicitar anulaciones desde Control y aprobar/rechazar.
+6. Cerrar cada caja con arqueo profesional.
+7. Cerrar la noche desde Control.
+8. Revisar Reportes, imprimir o exportar CSV.

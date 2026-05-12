@@ -13,6 +13,9 @@ function uid() {
 
 const initialState = () => ({
   nightOpen: true,
+  nightNumber: 1,
+  openedAt: new Date().toISOString(),
+  openedBy: "Encargado",
   currentView: "dashboard",
   boxes: [
     "Ingreso",
@@ -30,6 +33,9 @@ const initialState = () => ({
     operator: index === 0 ? "Porteria" : "",
     initialCash: index === 0 ? 50000 : 30000,
     status: "open",
+    openedAt: new Date().toISOString(),
+    closedAt: null,
+    closeNote: "",
   })),
   products: [
     ["Cerveza lata", "Bebidas", 2500, 180],
@@ -95,6 +101,7 @@ const initialState = () => ({
   })),
   expenses: [],
   closedAt: null,
+  closeSummary: "",
 });
 
 let state = loadState();
@@ -166,6 +173,16 @@ function normalizeState() {
   state.controls ||= { alcoholEnabled: true, ticketKeyword: "", eventName: "Noche actual", emergencyNote: "" };
   state.paymentMethods ||= base.paymentMethods;
   state.wristbands ||= base.wristbands;
+  state.nightNumber ||= 1;
+  state.openedAt ||= new Date().toISOString();
+  state.openedBy ||= "Encargado";
+  state.closeSummary ||= "";
+  state.boxes = state.boxes.map((box) => ({
+    openedAt: null,
+    closedAt: null,
+    closeNote: "",
+    ...box,
+  }));
   state.entrySales ||= [];
   state.entryTypes = state.entryTypes.map((type) => ({
     consumption: 0,
@@ -390,7 +407,31 @@ function boxMovements(boxId) {
 function boxExpectedCash(box) {
   const sold = total(boxMovements(box.id), (value) => value);
   const withdrawals = total(state.cashWithdrawals.filter((item) => item.boxId === box.id), (item) => item.amount);
-  return sold + Number(box.initialCash || 0) - withdrawals;
+  const voids = total(
+    state.voidRequests.filter((item) => item.boxId === box.id && item.status === "Aprobada"),
+    (item) => Number(item.amount || 0),
+  );
+  return sold + Number(box.initialCash || 0) - withdrawals - voids;
+}
+
+function boxSalesTotal(boxId) {
+  return total(boxMovements(boxId), (value) => value);
+}
+
+function isBoxOpen(boxId) {
+  return state.nightOpen && findBox(boxId)?.status === "open";
+}
+
+function assertOpenBox(boxId) {
+  if (!state.nightOpen) {
+    alert("La jornada esta cerrada. Primero abri una nueva noche.");
+    return false;
+  }
+  if (!isBoxOpen(boxId)) {
+    alert("La caja seleccionada esta cerrada.");
+    return false;
+  }
+  return true;
 }
 
 function saleLocation(boxId) {
@@ -424,10 +465,10 @@ function dashboardView() {
   const pendingVoids = state.voidRequests.filter((item) => item.status === "Pendiente").length;
   return `
     <div class="metrics">
+      ${metric("Estado", state.nightOpen ? "Abierta" : "Cerrada")}
       ${metric("Total vendido", money.format(entryRevenue() + barRevenue() + tableRevenue()))}
       ${metric("Ingreso", money.format(entryRevenue()))}
       ${metric("Bar y mesas", money.format(barRevenue() + tableRevenue()))}
-      ${metric("Gastos", money.format(expensesTotal()))}
     </div>
     <section class="panel">
       <div class="panel-head"><h2>Alertas operativas</h2></div>
@@ -520,10 +561,11 @@ function cajasView() {
               <p>Inicial: <strong>${money.format(box.initialCash || 0)}</strong></p>
               <p>Ventas: <strong>${money.format(sold)}</strong></p>
               <p>Rinde esperado: <strong>${money.format(boxExpectedCash(box))}</strong></p>
+              <p>Diferencia: <strong>${box.lastCount === undefined ? "-" : money.format(box.lastDifference || 0)}</strong></p>
               <div class="inline-actions">
                 <button class="secondary-button" data-edit-box="${box.id}">Editar</button>
-                <button class="${box.status === "open" ? "danger-button" : "secondary-button"}" data-toggle-box="${box.id}">
-                  ${box.status === "open" ? "Cerrar" : "Abrir"}
+                <button class="${box.status === "open" ? "danger-button" : "primary-button"}" data-box-flow="${box.id}">
+                  ${box.status === "open" ? "Cerrar con arqueo" : "Abrir caja"}
                 </button>
               </div>
             </article>
@@ -540,16 +582,28 @@ function controlView() {
   return `
     <section class="control-hero">
       <div>
-        <p class="eyebrow">Comando de la noche</p>
-        <h2>${state.controls.eventName || "Noche actual"}</h2>
-        <p class="muted">${openBoxes} cajas abiertas · ${pendingVoids} anulaciones pendientes</p>
+        <p class="eyebrow">Jornada operativa ROXXO</p>
+        <h2>${state.nightOpen ? "Noche abierta" : "Noche cerrada"} #${state.nightNumber}</h2>
+        <p class="muted">${formatDate(state.openedAt)} · ${openBoxes} cajas abiertas · ${pendingVoids} anulaciones pendientes</p>
       </div>
-      <button class="${state.controls.alcoholEnabled ? "danger-button" : "primary-button"} big-action" id="toggle-alcohol">
-        ${state.controls.alcoholEnabled ? "Cortar alcohol" : "Habilitar alcohol"}
-      </button>
+      <div class="inline-actions">
+        <button class="${state.controls.alcoholEnabled ? "danger-button" : "primary-button"} big-action" id="toggle-alcohol">
+          ${state.controls.alcoholEnabled ? "Cortar alcohol" : "Habilitar alcohol"}
+        </button>
+        ${state.nightOpen ? `<button class="danger-button big-action" id="close-night-full">Cerrar noche</button>` : `<button class="primary-button big-action" id="open-night-full">Abrir noche</button>`}
+      </div>
     </section>
 
     <div class="compact-grid">
+      <section class="panel compact-panel">
+        <div class="panel-head"><h2>Apertura / cierre</h2></div>
+        <form id="night-open-form" class="form-grid">
+          <label>Responsable<input name="openedBy" value="${state.openedBy || ""}" /></label>
+          <label>Nombre operativo<input name="eventName" value="${state.controls.eventName || "ROXXO"}" /></label>
+          <label class="full">Resumen cierre<textarea name="closeSummary" placeholder="Observaciones del cierre">${state.closeSummary || ""}</textarea></label>
+          <button class="primary-button full">Guardar jornada</button>
+        </form>
+      </section>
       <section class="panel compact-panel">
         <div class="panel-head"><h2>Datos de evento</h2></div>
         <form id="night-control-form" class="form-grid">
@@ -574,6 +628,8 @@ function controlView() {
         <div class="panel-head"><h2>Anulacion</h2></div>
         <form id="void-form" class="form-grid">
           <label>Area<select name="area"><option>Barra</option><option>Ingreso</option><option>Mesa</option><option>VIP</option></select></label>
+          <label>Caja<select name="boxId">${boxOptions("Caja central")}</select></label>
+          <label class="full">Ticket / comanda<select name="ticketId"><option value="">Sin ticket asociado</option>${state.tickets.map((ticket) => `<option value="${ticket.id}">#${ticket.number} - ${ticket.type} - ${money.format(ticket.total)}</option>`).join("")}</select></label>
           <label>Monto<input name="amount" type="number" min="0" /></label>
           <label class="full">Detalle<input name="detail" placeholder="Producto, codigo, mesa o motivo" required /></label>
           <button class="danger-button full">Solicitar anulacion</button>
@@ -1070,11 +1126,20 @@ function reportesView() {
   const net = gross - expensesTotal();
   return `
     <div class="metrics">
+      ${metric("Jornada", `#${state.nightNumber}`)}
       ${metric("Bruto", money.format(gross))}
       ${metric("Gastos", money.format(expensesTotal()))}
       ${metric("Neto estimado", money.format(net))}
-      ${metric("Personas ingresadas", total(state.entrySales, (sale) => sale.qty))}
     </div>
+    <section class="panel">
+      <div class="panel-head"><h2>Resumen de jornada</h2></div>
+      <div class="system-status">
+        <span><strong>Estado</strong> ${state.nightOpen ? "Abierta" : "Cerrada"}</span>
+        <span><strong>Apertura</strong> ${formatDate(state.openedAt)}</span>
+        <span><strong>Cierre</strong> ${state.closedAt ? formatDate(state.closedAt) : "-"}</span>
+        <span><strong>Responsable</strong> ${state.openedBy || "-"}</span>
+      </div>
+    </section>
     <section class="panel">
       <div class="panel-head">
         <div>
@@ -1443,12 +1508,14 @@ function voidRequestsTable() {
   return `
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Hora</th><th>Area</th><th>Detalle</th><th>Monto</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Hora</th><th>Area</th><th>Caja</th><th>Ticket</th><th>Detalle</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
         <tbody>
           ${state.voidRequests.slice(0, 20).map((item) => `
             <tr>
               <td>${formatDate(item.createdAt)}</td>
               <td>${item.area}</td>
+              <td>${findBox(item.boxId)?.name || "-"}</td>
+              <td>${item.ticketId ? `#${state.tickets.find((ticket) => ticket.id === item.ticketId)?.number || "-"}` : "-"}</td>
               <td>${item.detail}</td>
               <td>${money.format(item.amount || 0)}</td>
               <td><span class="status ${item.status === "Aprobada" ? "" : item.status === "Rechazada" ? "danger" : "warn"}">${item.status}</span></td>
@@ -1467,12 +1534,12 @@ function boxReportTable() {
   return `
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Caja</th><th>Operador</th><th>Inicial</th><th>Ventas</th><th>Rinde esperado</th><th>Diferencia</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Caja</th><th>Operador</th><th>Inicial</th><th>Ventas</th><th>Rinde esperado</th><th>Diferencia</th><th>Estado</th><th>Obs.</th></tr></thead>
         <tbody>
           ${state.boxes.map((box) => {
             const sold = total(boxMovements(box.id), (value) => value);
             const expected = boxExpectedCash(box);
-            return `<tr><td>${box.name}</td><td>${box.operator || "-"}</td><td>${money.format(box.initialCash || 0)}</td><td>${money.format(sold)}</td><td>${money.format(expected)}</td><td>${box.lastCount === undefined ? "-" : money.format(box.lastDifference || 0)}</td><td>${box.status === "open" ? "Abierta" : "Cerrada"}</td></tr>`;
+            return `<tr><td>${box.name}</td><td>${box.operator || "-"}</td><td>${money.format(box.initialCash || 0)}</td><td>${money.format(sold)}</td><td>${money.format(expected)}</td><td>${box.lastCount === undefined ? "-" : money.format(box.lastDifference || 0)}</td><td>${box.status === "open" ? "Abierta" : "Cerrada"}</td><td>${box.closeNote || "-"}</td></tr>`;
           }).join("")}
         </tbody>
       </table>
@@ -1555,6 +1622,7 @@ function bindViewEvents() {
     const data = Object.fromEntries(new FormData(event.target));
     const type = findEntryType(data.typeId);
     const qty = Number(data.qty);
+    if (!assertOpenBox(data.boxId)) return;
     const wristband = type.wristband ? findWristbandForEntry(type) : null;
     if (wristband && wristbandAvailable(wristband) < qty) {
       alert(`No hay precintos suficientes de ${wristband.name}.`);
@@ -1594,6 +1662,25 @@ function bindViewEvents() {
     render();
   });
 
+  document.querySelector("#night-open-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target));
+    state.openedBy = data.openedBy;
+    state.controls.eventName = data.eventName;
+    state.closeSummary = data.closeSummary;
+    logAudit("Jornada", "Datos de apertura/cierre actualizados");
+    alert("Jornada guardada.");
+    render();
+  });
+
+  document.querySelector("#open-night-full")?.addEventListener("click", () => {
+    openNight();
+  });
+
+  document.querySelector("#close-night-full")?.addEventListener("click", () => {
+    closeNight();
+  });
+
   document.querySelector("#toggle-alcohol")?.addEventListener("click", () => {
     state.controls.alcoholEnabled = !state.controls.alcoholEnabled;
     logAudit("Control", state.controls.alcoholEnabled ? "Alcohol habilitado" : "Alcohol cortado");
@@ -1622,6 +1709,8 @@ function bindViewEvents() {
     state.voidRequests.unshift({
       id: uid(),
       area: data.area,
+      boxId: data.boxId,
+      ticketId: data.ticketId,
       amount: Number(data.amount || 0),
       detail: data.detail,
       status: "Pendiente",
@@ -1658,6 +1747,12 @@ function bindViewEvents() {
       if (!request) return;
       request.status = "Aprobada";
       request.resolvedAt = new Date().toISOString();
+      const ticket = state.tickets.find((item) => item.id === request.ticketId);
+      if (ticket) {
+        ticket.status = "Anulado";
+        if (!request.amount) request.amount = ticket.total;
+        if (!request.boxId) request.boxId = ticket.boxId;
+      }
       logAudit("Anulacion", `Aprobada: ${request.detail}`);
       alert("Anulacion aprobada.");
       render();
@@ -1712,6 +1807,7 @@ function bindViewEvents() {
     const data = Object.fromEntries(new FormData(event.target));
     const product = findProduct(data.productId);
     const qty = Number(data.qty);
+    if (!assertOpenBox(data.boxId)) return;
     const location = saleLocation(data.boxId);
     if (!consumeProduct(product, qty, location)) {
       alert(`No hay stock suficiente en ${location}.`);
@@ -1805,6 +1901,7 @@ function bindViewEvents() {
       return;
     }
     const boxId = document.querySelector("#quick-box")?.value || selectedBox("Barra 1");
+    if (!assertOpenBox(boxId)) return;
     const payment = document.querySelector("#quick-payment")?.value || selectedPayment();
     const vipCardId = document.querySelector("#quick-vip-card")?.value;
     const cartTotal = total(barCart, (item) => item.qty * item.price);
@@ -1998,11 +2095,11 @@ function bindViewEvents() {
     render();
   });
 
-  document.querySelectorAll("[data-toggle-box]").forEach((button) => {
+  document.querySelectorAll("[data-box-flow]").forEach((button) => {
     button.addEventListener("click", () => {
-      const box = findBox(button.dataset.toggleBox);
-      box.status = box.status === "open" ? "closed" : "open";
-      render();
+      const box = findBox(button.dataset.boxFlow);
+      if (box.status === "open") openBoxCloseModal(box);
+      else openBoxOpenModal(box);
     });
   });
 
@@ -2166,6 +2263,64 @@ function openBoxModal(box) {
     (data) => {
       if (box) Object.assign(box, { ...data, initialCash: Number(data.initialCash) });
       else state.boxes.push({ id: uid(), ...data, initialCash: Number(data.initialCash) });
+    },
+  );
+}
+
+function openBoxOpenModal(box) {
+  openModal(
+    `Abrir ${box.name}`,
+    `<form class="form-grid">
+      <label>Cajero / responsable<input name="operator" value="${box.operator || ""}" required /></label>
+      <label>Efectivo inicial<input name="initialCash" type="number" min="0" value="${box.initialCash || 0}" required /></label>
+      <label class="full">Observacion<input name="note" placeholder="Opcional" /></label>
+      <button class="primary-button full">Abrir caja</button>
+    </form>`,
+    (data) => {
+      if (!state.nightOpen) {
+        alert("Primero abri la jornada.");
+        return false;
+      }
+      box.operator = data.operator;
+      box.initialCash = Number(data.initialCash);
+      box.status = "open";
+      box.openedAt = new Date().toISOString();
+      box.closedAt = null;
+      box.closeNote = "";
+      box.lastCount = undefined;
+      box.lastDifference = undefined;
+      logAudit("Caja", `Apertura ${box.name} por ${box.operator}`);
+    },
+  );
+}
+
+function openBoxCloseModal(box) {
+  const expected = boxExpectedCash(box);
+  openModal(
+    `Cerrar ${box.name}`,
+    `<form class="form-grid">
+      <label>Rinde esperado<input value="${money.format(expected)}" disabled /></label>
+      <label>Efectivo contado<input name="counted" type="number" min="0" required /></label>
+      <label class="full">Observacion de cierre<textarea name="note" placeholder="Diferencias, pagos pendientes, aclaraciones">${box.closeNote || ""}</textarea></label>
+      <button class="danger-button full">Cerrar caja</button>
+    </form>`,
+    (data) => {
+      const counted = Number(data.counted);
+      box.lastCount = counted;
+      box.lastDifference = counted - expected;
+      box.closeNote = data.note;
+      box.status = "closed";
+      box.closedAt = new Date().toISOString();
+      state.cashCounts.unshift({
+        id: uid(),
+        boxId: box.id,
+        expected,
+        counted,
+        difference: box.lastDifference,
+        note: data.note,
+        createdAt: new Date().toISOString(),
+      });
+      logAudit("Caja", `Cierre ${box.name}: diferencia ${money.format(box.lastDifference)}`);
     },
   );
 }
@@ -2396,12 +2551,20 @@ function openTablePayModal(table) {
       <button class="primary-button full">Registrar cobro</button>
     </form>`,
     (data) => {
+      if (!assertOpenBox(data.boxId)) return false;
       table.payments.push({
         id: uid(),
         amount: Number(data.amount),
         boxId: data.boxId,
         payment: data.payment,
         createdAt: new Date().toISOString(),
+      });
+      createTicket({
+        type: "Mesa",
+        boxId: data.boxId,
+        payment: data.payment,
+        source: `Mesa ${table.number}`,
+        items: table.items.map((item) => ({ productId: item.productId, name: item.name, qty: item.qty, price: item.price })),
       });
       const balance = tableTotal(table) - total(table.payments, (payment) => payment.amount);
       if (balance <= 0) table.status = "free";
@@ -2417,13 +2580,64 @@ function resetDemo() {
 }
 
 function closeNight() {
+  const openBoxes = state.boxes.filter((box) => box.status === "open");
+  if (openBoxes.length) {
+    alert(`No se puede cerrar la noche. Quedan cajas abiertas: ${openBoxes.map((box) => box.name).join(", ")}.`);
+    return;
+  }
   state.nightOpen = false;
   state.closedAt = new Date().toISOString();
-  state.boxes.forEach((box) => {
-    box.status = "closed";
-  });
+  state.closeSummary ||= `Cierre #${state.nightNumber} - ${formatDate(state.closedAt)}`;
+  logAudit("Jornada", `Noche #${state.nightNumber} cerrada`);
   state.currentView = "reportes";
   alert("Noche cerrada. Revisar reportes.");
+  render();
+}
+
+function openNight() {
+  if (state.nightOpen) {
+    alert("La noche ya esta abierta.");
+    return;
+  }
+  if (!confirm("Abrir nueva jornada ROXXO? Se conserva configuracion, productos y stock actual; se limpian ventas operativas de la noche anterior.")) return;
+  state.nightNumber += 1;
+  state.nightOpen = true;
+  state.openedAt = new Date().toISOString();
+  state.closedAt = null;
+  state.closeSummary = "";
+  state.entrySales = [];
+  state.sales = [];
+  state.tickets = [];
+  state.cashWithdrawals = [];
+  state.cashCounts = [];
+  state.voidRequests = [];
+  state.stockTransfers = [];
+  state.stockBreakages = [];
+  state.stockCounts = [];
+  state.expenses = [];
+  state.tables.forEach((table) => {
+    table.status = "free";
+    table.items = [];
+    table.payments = [];
+  });
+  state.wristbands.forEach((item) => {
+    item.sold = 0;
+    item.used = 0;
+    item.courtesy = 0;
+    item.broken = 0;
+  });
+  state.boxes.forEach((box) => {
+    box.status = "closed";
+    box.openedAt = null;
+    box.closedAt = null;
+    box.lastCount = undefined;
+    box.lastDifference = undefined;
+    box.closeNote = "";
+  });
+  barCart = [];
+  logAudit("Jornada", `Nueva noche #${state.nightNumber} abierta`);
+  state.currentView = "control";
+  alert("Nueva noche abierta. Ahora abri las cajas que van a trabajar.");
   render();
 }
 

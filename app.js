@@ -127,7 +127,7 @@ const roles = {
   admin: {
     name: "Administrador",
     startView: "home",
-    views: ["home", "sell", "control", "analysis", "close"],
+    views: ["home", "sell", "control", "close"],
   },
   bar: {
     name: "Caja bebidas",
@@ -380,6 +380,19 @@ function goBack() {
   render();
 }
 
+function focusControlAction(target) {
+  const map = {
+    money: "#money-movement-form",
+    void: "#void-form",
+    cash: "#cash-count-form",
+  };
+  const element = document.querySelector(map[target]);
+  if (!element) return;
+  element.closest(".panel")?.classList.add("focus-panel");
+  element.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => element.closest(".panel")?.classList.remove("focus-panel"), 1800);
+}
+
 const titles = {
   home: "Inicio",
   sell: "Vender",
@@ -550,7 +563,7 @@ function homeView() {
         <img class="home-logo" src="./assets/roxo-logo.jpeg" alt="ROXO Club" />
         <p class="eyebrow">ROXO</p>
         <h2>${state.nightOpen ? "Noche en curso" : "Noche cerrada"}</h2>
-        <span>Jornada #${state.nightNumber} · ${state.openedBy || "Sin responsable"}</span>
+        <span>Jornada #${state.nightNumber} - ${state.openedBy || "Sin responsable"}</span>
       </div>
       <div class="home-metrics">
         <button class="home-stat" data-view-jump="sell"><strong>${money.format(entryRevenue() + barRevenue() + tableRevenue())}</strong><span>Vendido</span></button>
@@ -561,8 +574,8 @@ function homeView() {
       <div class="action-grid">
         <button class="app-action primary" data-view-jump="sell"><strong>Vender</strong><span>Entrada, barra o mesa</span></button>
         <button class="app-action" data-view-jump="control"><strong>Controlar</strong><span>Cajas, anulaciones, dinero</span></button>
-        <button class="app-action" data-view-jump="analysis"><strong>Analisis</strong><span>Graficos y reportes</span></button>
         <button class="app-action" data-view-jump="close"><strong>Cerrar</strong><span>Arqueo y cierre</span></button>
+        <button class="app-action" data-view-jump="analysis"><strong>Ver numeros</strong><span>Analisis y reportes</span></button>
       </div>
     </section>
   `;
@@ -792,12 +805,15 @@ function cajasView() {
 function controlView() {
   const openBoxes = state.boxes.filter((box) => box.status === "open").length;
   const pendingVoids = state.voidRequests.filter((request) => request.status === "Pendiente").length;
+  const stockLow = state.products.filter((product) => product.stock <= product.minStock).length;
+  const wristbandLow = state.wristbands.filter((item) => wristbandAvailable(item) <= 20).length;
+  const todayOut = total(periodItems(state.moneyMovements).filter((item) => item.type === "Salida"), (item) => item.amount);
   return `
     <section class="control-hero">
       <div>
         <p class="eyebrow">Jornada operativa ROXO</p>
         <h2>${state.nightOpen ? "Noche abierta" : "Noche cerrada"} #${state.nightNumber}</h2>
-        <p class="muted">${formatDate(state.openedAt)} · ${openBoxes} cajas abiertas · ${pendingVoids} anulaciones pendientes</p>
+        <p class="muted">${formatDate(state.openedAt)} - ${openBoxes} cajas abiertas - ${pendingVoids} anulaciones pendientes</p>
       </div>
       <div class="inline-actions">
         <button class="${state.controls.alcoholEnabled ? "danger-button" : "primary-button"} big-action" id="toggle-alcohol">
@@ -805,6 +821,21 @@ function controlView() {
         </button>
         ${state.nightOpen ? `<button class="danger-button big-action" id="close-night-full">Cerrar noche</button>` : `<button class="primary-button big-action" id="open-night-full">Abrir noche</button>`}
       </div>
+    </section>
+
+    <section class="alert-board">
+      <button class="alert-tile" data-view-jump="cajas"><strong>${openBoxes}</strong><span>Cajas abiertas</span></button>
+      <button class="alert-tile ${pendingVoids ? "warn" : ""}" data-view-jump="control"><strong>${pendingVoids}</strong><span>Anulaciones pendientes</span></button>
+      <button class="alert-tile ${stockLow ? "warn" : ""}" data-view-jump="stock"><strong>${stockLow}</strong><span>Stock bajo</span></button>
+      <button class="alert-tile ${wristbandLow ? "warn" : ""}" data-view-jump="ingreso"><strong>${wristbandLow}</strong><span>Precintos bajos</span></button>
+      <button class="alert-tile" data-view-jump="analysis"><strong>${money.format(todayOut)}</strong><span>Salidas hoy</span></button>
+    </section>
+
+    <section class="quick-actions">
+      <button data-action-shortcut="money">Salida de plata</button>
+      <button data-action-shortcut="void">Pedir anulacion</button>
+      <button data-action-shortcut="cash">Contar caja</button>
+      <button data-view-jump="cajas">Abrir/cerrar caja</button>
     </section>
 
     <div class="compact-grid">
@@ -1100,7 +1131,7 @@ function barView() {
             <button class="pos-product ${product.stock <= 0 || (!state.controls.alcoholEnabled && isAlcoholProduct(product)) ? "disabled" : ""}" data-pos-product="${product.id}" data-category-name="${product.category}" ${product.stock <= 0 || (!state.controls.alcoholEnabled && isAlcoholProduct(product)) ? "disabled" : ""}>
               <span>${product.name}</span>
               <strong>${money.format(product.price)}</strong>
-              <small>${!state.controls.alcoholEnabled && isAlcoholProduct(product) ? "Alcohol cortado" : `${product.category} · Stock ${product.stock}`}</small>
+              <small>${!state.controls.alcoholEnabled && isAlcoholProduct(product) ? "Alcohol cortado" : `${product.category} - Stock ${product.stock}`}</small>
             </button>
           `).join("")}
         </div>
@@ -1876,7 +1907,21 @@ function bindViewEvents() {
 
   document.querySelector("#fab-action")?.addEventListener("click", () => {
     if (!session.role) return;
-    navigateTo(session.role === "admin" ? "sell" : roles[session.role].startView);
+    const menu = document.querySelector("#fab-menu");
+    if (menu) menu.hidden = !menu.hidden;
+  });
+
+  document.querySelectorAll("[data-fab-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.fabTarget;
+      document.querySelector("#fab-menu").hidden = true;
+      navigateTo("control");
+      setTimeout(() => focusControlAction(target), 0);
+    });
+  });
+
+  document.querySelectorAll("[data-action-shortcut]").forEach((button) => {
+    button.addEventListener("click", () => focusControlAction(button.dataset.actionShortcut));
   });
 
   document.querySelector("#analysis-filter")?.addEventListener("submit", (event) => {

@@ -35,7 +35,10 @@ npm run check
 - Acceso por puesto ampliado: administrador, caja bebidas, ingreso, puerta, mozos y deposito.
 - Vista Control para manejar la noche desde celular: corte de alcohol, palabra de comanda, retiros, anulaciones y conteo de caja.
 - Interfaz tipo software de gestion: compacta, modular, con barra de estado y navegacion inferior en celular.
-- Interfaz tipo app: Inicio, Vender, Control y Cierre como acciones principales.
+- Interfaz tipo app simplificada: Inicio, Vender, Control y Cierre como acciones principales.
+- Analisis queda como acceso interno desde Inicio, no satura la barra principal.
+- Boton flotante + con acciones rapidas: vender, salida de plata, anulacion, contar caja y cierre.
+- Control muestra alertas accionables antes que formularios largos.
 - Navegacion de app con boton Atras, Inicio e historial interno.
 - Pantalla Vender con pestañas simples: Entrada, Barra y Mesa.
 - Logo oficial ROXO integrado en inicio y cabecera.

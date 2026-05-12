@@ -1,63 +1,92 @@
-# Control de Muebles online
+# ROXO | Sistema de Gestion
 
-Sistema para controlar stock, salidas de choferes, ventas, devoluciones, materiales y dinero recibido.
+Demo web para administrar una noche de boliche/bar. Preparado como prueba para sistema Club Roxo.
 
-Esta version esta preparada para publicarse en Render con una base PostgreSQL de Render. No usa Supabase.
+## Como usar
 
-## Archivos
+Abrir `index.html` en el navegador. La aplicacion guarda la informacion en el navegador con `localStorage`, por lo que no requiere instalacion ni servidor para esta version inicial.
 
-- `index.html`: interfaz principal.
-- `styles.css`: estilos.
-- `app.js`: logica del sistema en el navegador.
-- `server.js`: servidor Express y API para guardar los datos.
-- `package.json`: dependencias y comando de arranque para Render.
+## Publicar en Render
 
-## Como funciona online
+1. Subir estos archivos a un repositorio de GitHub.
+2. Entrar a Render y crear un nuevo `Static Site`.
+3. Conectar el repositorio.
+4. Usar:
+   - Build Command: dejar vacio.
+   - Publish Directory: `.`
+5. Render tambien puede detectar `render.yaml` automaticamente.
 
-Render corre `server.js`. El servidor:
+## Validar antes de publicar
 
-- muestra la app web;
-- protege el acceso con una contrasena si se configura `APP_PASSWORD`;
-- guarda y lee el estado compartido en PostgreSQL usando `DATABASE_URL`.
+Ejecutar:
 
-## Variables en Render
-
-En el Web Service de Render configurar:
-
-```text
-DATABASE_URL = Internal Database URL de la base PostgreSQL de Render
-APP_PASSWORD = contrasena para entrar al sistema
-NODE_ENV = production
+```bash
+npm run check
 ```
 
-`APP_PASSWORD` puede ser cualquier contrasena que quieras usar para entrar al sistema.
+## Modulos incluidos
 
-## Crear en Render
-
-1. Subir estos archivos a GitHub.
-2. En Render, crear una **Postgres Database**.
-3. Copiar el **Internal Database URL** de esa base.
-4. Crear un **Web Service** conectado al repositorio de GitHub.
-5. Usar:
-
-```text
-Build Command: npm install
-Start Command: npm start
-```
-
-6. En **Environment**, pegar las variables indicadas arriba.
-7. Deploy.
-
-## Orden recomendado de uso
-
-1. Cargar los muebles en **Stock muebles**.
-2. Cargar materiales en **Materiales** si corresponde.
-3. Cargar choferes en **Choferes**.
-4. Crear una salida en **Salida chofer**.
-5. Cerrar la salida en **Cierre / rendicion** cargando efectivo y transferencia.
-6. Usar **Ventas y devoluciones** solo si necesitas cargar o editar un movimiento manual.
-7. Revisar totales en **Resumen** con filtros por dia, semana, mes o fechas.
+- Jornada ROXO: apertura y cierre de cada noche operativa de fin de semana.
+- Apertura de caja con responsable, efectivo inicial y hora de apertura.
+- Cierre de caja con arqueo profesional: esperado, contado, diferencia y observacion.
+- Bloqueos operativos: no se puede vender con la jornada o la caja cerrada.
+- Cierre general: no permite cerrar la noche si quedan cajas abiertas.
+- Acceso por puesto: administrador, caja bebidas, ingreso y mozos.
+- Acceso por puesto ampliado: administrador, caja bebidas, ingreso, puerta, mozos y deposito.
+- Vista Control para manejar la noche desde celular: corte de alcohol, palabra de comanda, retiros, anulaciones y conteo de caja.
+- Interfaz tipo software de gestion: compacta, modular, con barra de estado y navegacion inferior en celular.
+- Interfaz tipo app simplificada: Inicio, Vender, Control y Cierre como acciones principales.
+- Analisis queda como acceso interno desde Inicio, no satura la barra principal.
+- Boton flotante + con acciones rapidas: vender, salida de plata, anulacion, contar caja y cierre.
+- Control muestra alertas accionables antes que formularios largos.
+- Rediseño compacto para PC y movil: resumen corto, metricas pequeñas, chips de accion y listas densas.
+- Barra/POS con productos compactos para reducir perdida visual.
+- Tema oscuro profesional tipo software de gestion/POS para ROXO.
+- Navegacion de app con boton Atras, Inicio e historial interno.
+- Pantalla Vender con pestañas simples: Entrada, Barra y Mesa.
+- Logo oficial ROXO integrado en inicio y cabecera.
+- Panel Analisis con filtros por hoy, fecha exacta o mes.
+- Graficos simples de ventas por area y dinero.
+- Movimientos de dinero: ingresos y salidas para proveedores, empleados, mercaderia, ajustes y otros.
+- Arqueo profesional por caja con esperado, contado y diferencia.
+- Tickets/comandas numeradas para ventas de barra.
+- Tickets/comandas numeradas para cobros de mesa.
+- Anulaciones con estado pendiente, aprobada o rechazada.
+- Anulaciones asociadas a caja/ticket para descontar del arqueo.
+- Conteo real de stock contra stock teorico.
+- Configuracion de datos maestros: productos, cajas, entradas, RRPP, tarjetas VIP, medios de pago y ubicaciones.
+- Exportacion CSV del cierre por caja.
+- Panel general con ventas, ingreso, gastos, mesas ocupadas y stock bajo.
+- 9 cajas iniciales, incluida caja de ingreso.
+- Apertura/cierre de cajas, operador y monto inicial.
+- Venta de entradas: precinto general, VIP, puerta y cortesia.
+- Inventario real de precintos: inicial, entregados, vendidos, cortesias, usados en puerta, roturas y sobrantes.
+- Control de puerta con codigo de entrada y validacion de uso.
+- RRPP para asociar ventas e invitaciones.
+- Tarjetas VIP/cashless con saldo y recargas.
+- Venta rapida de bar con descuento automatico de stock.
+- POS de bebidas para cajero: productos grandes, carrito, total y cobro.
+- Control de mesas con mozo, consumos, saldo y cobro.
+- Stock de bebidas, tragos, combos y comida por deposito/barra.
+- Transferencias entre deposito y barras.
+- Registro de roturas, faltantes y ajustes.
+- Reposicion y alerta de stock minimo.
+- Gastos por categoria: empleados, seguridad, cajeros, mozos, DJ, limpieza, proveedores, mantenimiento y extras.
+- Reportes de cierre por caja, entradas, productos vendidos, bruto, gastos y neto estimado.
+- Reporte de stock por ubicacion y auditoria de movimientos.
+- Impresion de reporte desde la seccion Reportes.
 
 ## Nota
 
-El sistema tambien guarda un respaldo local en el navegador. Si se corta internet, puede conservar una copia local, pero la base compartida es PostgreSQL en Render.
+Para convertirlo en un sistema online multiusuario real, el siguiente paso es agregar backend, base de datos y autenticacion. Esta version ya deja lista la operativa principal para probar el flujo completo de una noche.
+
+## Flujo recomendado
+
+1. Entrar como Administrador.
+2. Ir a Control y abrir/guardar la jornada ROXO.
+3. Ir a Cajas y abrir cada caja con cajero y efectivo inicial.
+4. Operar ventas desde Ingreso, Bar y Mesas.
+5. Solicitar anulaciones desde Control y aprobar/rechazar.
+6. Cerrar cada caja con arqueo profesional.
+7. Cerrar la noche desde Control.
+8. Revisar Reportes, imprimir o exportar CSV.

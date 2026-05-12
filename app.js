@@ -574,26 +574,52 @@ function dashboardView() {
 function homeView() {
   const openBoxes = state.boxes.filter((box) => box.status === "open").length;
   const inside = total(state.entrySales.filter((sale) => sale.usedAt), (sale) => sale.qty);
-  const alerts = state.products.filter((product) => product.stock <= product.minStock).length + state.voidRequests.filter((item) => item.status === "Pendiente").length;
+  const lowStock = state.products.filter((product) => product.stock <= product.minStock);
+  const pendingVoids = state.voidRequests.filter((item) => item.status === "Pendiente");
+  const lowWristbands = state.wristbands.filter((item) => wristbandAvailable(item) <= 20);
+  const pendingItems = [
+    ...state.boxes.filter((box) => box.status === "open").slice(0, 2).map((box) => ({ label: `Cerrar ${box.name}`, value: "Caja abierta", view: "cajas" })),
+    ...pendingVoids.slice(0, 2).map((item) => ({ label: item.detail, value: "Anulacion", view: "control" })),
+    ...lowStock.slice(0, 2).map((item) => ({ label: item.name, value: "Stock bajo", view: "stock" })),
+    ...lowWristbands.slice(0, 2).map((item) => ({ label: item.name, value: "Precintos bajos", view: "ingreso" })),
+  ];
   return `
-    <section class="app-home">
-      <div class="home-hero">
-        <img class="home-logo" src="./assets/roxo-logo.jpeg" alt="ROXO Club" />
-        <p class="eyebrow">ROXO</p>
-        <h2>${state.nightOpen ? "Noche en curso" : "Noche cerrada"}</h2>
-        <span>Jornada #${state.nightNumber} - ${state.openedBy || "Sin responsable"}</span>
+    <section class="app-home compact-app">
+      <div class="app-summary">
+        <img src="./assets/roxo-logo.jpeg" alt="ROXO Club" />
+        <div>
+          <p class="eyebrow">ROXO Club</p>
+          <h2>${state.nightOpen ? "Noche abierta" : "Noche cerrada"}</h2>
+          <span>Jornada #${state.nightNumber} - ${formatDate(state.openedAt)}</span>
+        </div>
+        <button class="mini-cta" data-view-jump="analysis">Ver numeros</button>
       </div>
-      <div class="home-metrics">
-        <button class="home-stat" data-view-jump="sell"><strong>${money.format(entryRevenue() + barRevenue() + tableRevenue())}</strong><span>Vendido</span></button>
-        <button class="home-stat" data-view-jump="puerta"><strong>${inside}</strong><span>Dentro</span></button>
-        <button class="home-stat" data-view-jump="cajas"><strong>${openBoxes}</strong><span>Cajas</span></button>
-        <button class="home-stat" data-view-jump="control"><strong>${alerts}</strong><span>Alertas</span></button>
+
+      <div class="mini-metrics">
+        <button data-view-jump="sell"><strong>${money.format(entryRevenue() + barRevenue() + tableRevenue())}</strong><span>Vendido</span></button>
+        <button data-view-jump="puerta"><strong>${inside}</strong><span>Dentro</span></button>
+        <button data-view-jump="cajas"><strong>${openBoxes}</strong><span>Cajas</span></button>
+        <button data-view-jump="control"><strong>${pendingItems.length}</strong><span>Pendientes</span></button>
       </div>
-      <div class="action-grid">
-        <button class="app-action primary" data-view-jump="sell"><strong>Vender</strong><span>Entrada, barra o mesa</span></button>
-        <button class="app-action" data-view-jump="control"><strong>Controlar</strong><span>Cajas, anulaciones, dinero</span></button>
-        <button class="app-action" data-view-jump="close"><strong>Cerrar</strong><span>Arqueo y cierre</span></button>
-        <button class="app-action" data-view-jump="analysis"><strong>Ver numeros</strong><span>Analisis y reportes</span></button>
+
+      <div class="quick-strip">
+        <button data-view-jump="sell">$ Vender</button>
+        <button data-action-shortcut="money">$ Salida</button>
+        <button data-action-shortcut="void">! Anular</button>
+        <button data-view-jump="ingreso">P Precintos</button>
+        <button data-view-jump="close">C Cierre</button>
+      </div>
+
+      <div class="compact-section">
+        <div class="section-title"><h2>Pendientes</h2><span>${pendingItems.length || "Todo OK"}</span></div>
+        <div class="compact-list">
+          ${pendingItems.length ? pendingItems.map((item) => `
+            <button class="compact-row" data-view-jump="${item.view}">
+              <span>${item.label}</span>
+              <strong>${item.value}</strong>
+            </button>
+          `).join("") : `<div class="empty slim">Sin pendientes importantes.</div>`}
+        </div>
       </div>
     </section>
   `;
@@ -841,12 +867,15 @@ function controlView() {
       </div>
     </section>
 
-    <section class="alert-board">
-      <button class="alert-tile" data-view-jump="cajas"><strong>${openBoxes}</strong><span>Cajas abiertas</span></button>
-      <button class="alert-tile ${pendingVoids ? "warn" : ""}" data-view-jump="control"><strong>${pendingVoids}</strong><span>Anulaciones pendientes</span></button>
-      <button class="alert-tile ${stockLow ? "warn" : ""}" data-view-jump="stock"><strong>${stockLow}</strong><span>Stock bajo</span></button>
-      <button class="alert-tile ${wristbandLow ? "warn" : ""}" data-view-jump="ingreso"><strong>${wristbandLow}</strong><span>Precintos bajos</span></button>
-      <button class="alert-tile" data-view-jump="analysis"><strong>${money.format(todayOut)}</strong><span>Salidas hoy</span></button>
+    <section class="compact-section">
+      <div class="section-title"><h2>Control rapido</h2><span>Resolver</span></div>
+      <div class="control-list">
+        <button data-view-jump="cajas"><span>Cajas abiertas</span><strong>${openBoxes}</strong></button>
+        <button data-action-shortcut="void"><span>Anulaciones pendientes</span><strong>${pendingVoids}</strong></button>
+        <button data-view-jump="stock"><span>Stock bajo</span><strong>${stockLow}</strong></button>
+        <button data-view-jump="ingreso"><span>Precintos bajos</span><strong>${wristbandLow}</strong></button>
+        <button data-view-jump="analysis"><span>Salidas de plata hoy</span><strong>${money.format(todayOut)}</strong></button>
+      </div>
     </section>
 
     <section class="quick-actions">

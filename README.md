@@ -39,6 +39,8 @@ npm run check
 - Analisis queda como acceso interno desde Inicio, no satura la barra principal.
 - Boton flotante + con acciones rapidas: vender, salida de plata, anulacion, contar caja y cierre.
 - Control muestra alertas accionables antes que formularios largos.
+- Rediseño compacto para PC y movil: resumen corto, metricas pequeñas, chips de accion y listas densas.
+- Barra/POS con productos compactos para reducir perdida visual.
 - Navegacion de app con boton Atras, Inicio e historial interno.
 - Pantalla Vender con pestañas simples: Entrada, Barra y Mesa.
 - Logo oficial ROXO integrado en inicio y cabecera.

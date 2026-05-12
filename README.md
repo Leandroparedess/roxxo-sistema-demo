@@ -41,6 +41,7 @@ npm run check
 - Control muestra alertas accionables antes que formularios largos.
 - Rediseño compacto para PC y movil: resumen corto, metricas pequeñas, chips de accion y listas densas.
 - Barra/POS con productos compactos para reducir perdida visual.
+- Tema oscuro profesional tipo software de gestion/POS para ROXO.
 - Navegacion de app con boton Atras, Inicio e historial interno.
 - Pantalla Vender con pestañas simples: Entrada, Barra y Mesa.
 - Logo oficial ROXO integrado en inicio y cabecera.

@@ -82,12 +82,13 @@ const initialState = () => ({
   stockCounts: [],
   cashWithdrawals: [],
   cashCounts: [],
+  moneyMovements: [],
   voidRequests: [],
   audits: [],
   controls: {
     alcoholEnabled: true,
     ticketKeyword: "",
-    eventName: "Noche actual",
+    eventName: "ROXO",
     emergencyNote: "",
   },
   paymentMethods: ["Efectivo", "Transferencia", "Tarjeta", "QR", "Tarjeta VIP", "Invitacion"],
@@ -126,7 +127,7 @@ const roles = {
   admin: {
     name: "Administrador",
     startView: "home",
-    views: ["home", "sell", "control", "close"],
+    views: ["home", "sell", "control", "analysis", "close"],
   },
   bar: {
     name: "Caja bebidas",
@@ -156,6 +157,7 @@ const roles = {
 };
 
 let barCart = [];
+let navHistory = [];
 
 function normalizeState() {
   const base = initialState();
@@ -167,10 +169,11 @@ function normalizeState() {
   state.stockCounts ||= [];
   state.cashWithdrawals ||= [];
   state.cashCounts ||= [];
+  state.moneyMovements ||= [];
   state.voidRequests ||= [];
   state.tickets ||= [];
   state.audits ||= [];
-  state.controls ||= { alcoholEnabled: true, ticketKeyword: "", eventName: "Noche actual", emergencyNote: "" };
+  state.controls ||= { alcoholEnabled: true, ticketKeyword: "", eventName: "ROXO", emergencyNote: "" };
   state.paymentMethods ||= base.paymentMethods;
   state.wristbands ||= base.wristbands;
   state.nightNumber ||= 1;
@@ -281,11 +284,15 @@ function render() {
   }
   const role = roles[session.role];
   document.body.classList.toggle("seller-mode", session.role !== "admin");
-  document.querySelector(".brand span").textContent = `Club Roxxo - ${role.name}`;
+  document.querySelector(".brand span").textContent = `Club Roxo - ${role.name}`;
   document.querySelector(".top-actions").innerHTML = `
+    <button class="secondary-button nav-back" id="go-back" ${navHistory.length ? "" : "disabled"}>Atras</button>
+    <button class="secondary-button" id="go-home">Inicio</button>
     <button class="secondary-button" id="switch-role">Cambiar usuario</button>
     ${session.role === "admin" ? `<button class="icon-button" id="reset-demo" title="Reiniciar datos">R</button><button class="primary-button" id="close-night">Cerrar noche</button>` : ""}
   `;
+  document.querySelector("#go-back")?.addEventListener("click", goBack);
+  document.querySelector("#go-home")?.addEventListener("click", () => navigateTo(roles[session.role]?.startView || "home"));
   document.querySelector("#switch-role").addEventListener("click", () => {
     session = { role: "" };
     render();
@@ -308,7 +315,7 @@ function systemStatusBar() {
   if (!session.role) return "";
   return `
     <div class="system-status">
-      <span><strong>Evento</strong> ${state.controls?.eventName || "Noche actual"}</span>
+      <span><strong>Marca</strong> ${state.controls?.eventName || "ROXO"}</span>
       <span><strong>Usuario</strong> ${roles[session.role]?.name || "-"}</span>
       <span><strong>Alcohol</strong> ${state.controls?.alcoholEnabled ? "Habilitado" : "Cortado"}</span>
       <span><strong>Comanda</strong> ${state.controls?.ticketKeyword || "Sin palabra"}</span>
@@ -319,7 +326,7 @@ function systemStatusBar() {
 function renderRoleGate() {
   document.body.classList.remove("seller-mode");
   document.querySelector("#view-title").textContent = "Elegir usuario";
-  document.querySelector(".brand span").textContent = "Club Roxxo";
+  document.querySelector(".brand span").textContent = "Club Roxo";
   document.querySelector(".top-actions").innerHTML = "";
   document.querySelector(".nav").innerHTML = "";
   document.querySelector("#alert-area").innerHTML = "";
@@ -355,15 +362,28 @@ function renderNav(role) {
     .join("");
   document.querySelectorAll(".nav-link").forEach((button) => {
     button.addEventListener("click", () => {
-      state.currentView = button.dataset.view;
-      render();
+      navigateTo(button.dataset.view);
     });
   });
+}
+
+function navigateTo(view) {
+  if (view && view !== state.currentView) navHistory.push(state.currentView);
+  state.currentView = view;
+  render();
+}
+
+function goBack() {
+  const previous = navHistory.pop();
+  if (!previous) return;
+  state.currentView = previous;
+  render();
 }
 
 const titles = {
   home: "Inicio",
   sell: "Vender",
+  analysis: "Analisis",
   dashboard: "Panel",
   control: "Control",
   cajas: "Cajas",
@@ -527,7 +547,8 @@ function homeView() {
   return `
     <section class="app-home">
       <div class="home-hero">
-        <p class="eyebrow">ROXXO</p>
+        <img class="home-logo" src="./assets/roxo-logo.jpeg" alt="ROXO Club" />
+        <p class="eyebrow">ROXO</p>
         <h2>${state.nightOpen ? "Noche en curso" : "Noche cerrada"}</h2>
         <span>Jornada #${state.nightNumber} · ${state.openedBy || "Sin responsable"}</span>
       </div>
@@ -539,12 +560,92 @@ function homeView() {
       </div>
       <div class="action-grid">
         <button class="app-action primary" data-view-jump="sell"><strong>Vender</strong><span>Entrada, barra o mesa</span></button>
-        <button class="app-action" data-view-jump="control"><strong>Controlar</strong><span>Cajas, anulaciones, precintos</span></button>
-        <button class="app-action" data-view-jump="close"><strong>Cerrar</strong><span>Arqueo y cierre de noche</span></button>
-        <button class="app-action" data-view-jump="reportes"><strong>Reportes</strong><span>Detalle, imprimir y exportar</span></button>
+        <button class="app-action" data-view-jump="control"><strong>Controlar</strong><span>Cajas, anulaciones, dinero</span></button>
+        <button class="app-action" data-view-jump="analysis"><strong>Analisis</strong><span>Graficos y reportes</span></button>
+        <button class="app-action" data-view-jump="close"><strong>Cerrar</strong><span>Arqueo y cierre</span></button>
       </div>
     </section>
   `;
+}
+
+function periodItems(items, dateKey = "createdAt") {
+  const mode = session.analysisMode || "today";
+  const today = new Date().toISOString().slice(0, 10);
+  const selectedDate = session.analysisDate || today;
+  const selectedMonth = session.analysisMonth || today.slice(0, 7);
+  return items.filter((item) => {
+    const value = item[dateKey];
+    if (!value) return false;
+    const date = value.slice(0, 10);
+    const month = value.slice(0, 7);
+    if (mode === "date") return date === selectedDate;
+    if (mode === "month") return month === selectedMonth;
+    return date === today;
+  });
+}
+
+function analysisView() {
+  const entryItems = periodItems(state.entrySales);
+  const saleItems = periodItems(state.sales);
+  const tablePays = periodItems(state.tables.flatMap((table) => table.payments));
+  const movements = periodItems(state.moneyMovements);
+  const incomeMovements = movements.filter((item) => item.type === "Ingreso");
+  const outcomeMovements = movements.filter((item) => item.type === "Salida");
+  const salesTotal = total(entryItems, (item) => item.qty * item.price) + total(saleItems, (item) => item.qty * item.price) + total(tablePays, (item) => item.amount);
+  const incomeTotal = total(incomeMovements, (item) => item.amount);
+  const outcomeTotal = total(outcomeMovements, (item) => item.amount);
+  const net = salesTotal + incomeTotal - outcomeTotal;
+  return `
+    <section class="analysis-head">
+      <div>
+        <h2>Panel de analisis</h2>
+        <p>Reportes por dia, fecha o mes.</p>
+      </div>
+      <form id="analysis-filter" class="analysis-filter">
+        <select name="mode">
+          <option value="today" ${session.analysisMode === "today" || !session.analysisMode ? "selected" : ""}>Hoy</option>
+          <option value="date" ${session.analysisMode === "date" ? "selected" : ""}>Fecha</option>
+          <option value="month" ${session.analysisMode === "month" ? "selected" : ""}>Mes</option>
+        </select>
+        <input name="date" type="date" value="${session.analysisDate || new Date().toISOString().slice(0, 10)}" />
+        <input name="month" type="month" value="${session.analysisMonth || new Date().toISOString().slice(0, 7)}" />
+        <button class="primary-button">Aplicar</button>
+      </form>
+    </section>
+    <div class="analytics-grid">
+      ${metric("Ventas", money.format(salesTotal))}
+      ${metric("Ingresos extra", money.format(incomeTotal))}
+      ${metric("Salidas", money.format(outcomeTotal))}
+      ${metric("Neto", money.format(net))}
+    </div>
+    <div class="grid-2">
+      <section class="chart-card"><h2>Ventas por area</h2>${barChart([
+        ["Entrada", total(entryItems, (item) => item.qty * item.price)],
+        ["Barra", total(saleItems, (item) => item.qty * item.price)],
+        ["Mesas", total(tablePays, (item) => item.amount)],
+      ])}</section>
+      <section class="chart-card"><h2>Dinero</h2>${barChart([
+        ["Ventas", salesTotal],
+        ["Ingresos", incomeTotal],
+        ["Salidas", outcomeTotal],
+        ["Neto", Math.max(net, 0)],
+      ])}</section>
+    </div>
+    <div class="grid-2">
+      <section class="panel"><div class="panel-head"><h2>Movimientos de dinero</h2></div>${moneyMovementsTable(movements)}</section>
+      <section class="panel"><div class="panel-head"><h2>Productos vendidos</h2></div>${topProductsTable()}</section>
+    </div>
+  `;
+}
+
+function barChart(rows) {
+  const max = Math.max(...rows.map((row) => row[1]), 1);
+  return `<div class="bar-chart">${rows.map(([label, value]) => `
+    <div class="bar-row">
+      <span>${label}</span>
+      <div><i style="width:${Math.max((value / max) * 100, 3)}%"></i></div>
+      <strong>${money.format(value)}</strong>
+    </div>`).join("")}</div>`;
 }
 
 function sellView() {
@@ -694,7 +795,7 @@ function controlView() {
   return `
     <section class="control-hero">
       <div>
-        <p class="eyebrow">Jornada operativa ROXXO</p>
+        <p class="eyebrow">Jornada operativa ROXO</p>
         <h2>${state.nightOpen ? "Noche abierta" : "Noche cerrada"} #${state.nightNumber}</h2>
         <p class="muted">${formatDate(state.openedAt)} · ${openBoxes} cajas abiertas · ${pendingVoids} anulaciones pendientes</p>
       </div>
@@ -711,11 +812,29 @@ function controlView() {
         <div class="panel-head"><h2>Apertura / cierre</h2></div>
         <form id="night-open-form" class="form-grid">
           <label>Responsable<input name="openedBy" value="${state.openedBy || ""}" /></label>
-          <label>Nombre operativo<input name="eventName" value="${state.controls.eventName || "ROXXO"}" /></label>
+          <label>Nombre operativo<input name="eventName" value="${state.controls.eventName || "ROXO"}" /></label>
           <label class="full">Resumen cierre<textarea name="closeSummary" placeholder="Observaciones del cierre">${state.closeSummary || ""}</textarea></label>
           <button class="primary-button full">Guardar jornada</button>
         </form>
       </section>
+      <section class="panel compact-panel">
+        <div class="panel-head"><h2>Entrada / salida de dinero</h2></div>
+        <form id="money-movement-form" class="form-grid">
+          <label>Tipo<select name="type"><option>Salida</option><option>Ingreso</option></select></label>
+          <label>Caja<select name="boxId">${boxOptions("Caja central")}</select></label>
+          <label>Categoria
+            <select name="category">
+              ${["Proveedor", "Empleado", "Seguridad", "DJ", "Limpieza", "Mercaderia", "Retiro", "Ajuste", "Otro"].map((item) => `<option>${item}</option>`).join("")}
+            </select>
+          </label>
+          <label>Monto<input name="amount" type="number" min="1" required /></label>
+          <label>Medio<select name="payment">${paymentOptions()}</select></label>
+          <label>Responsable<input name="person" placeholder="Nombre" /></label>
+          <label class="full">Detalle<input name="detail" placeholder="Proveedor, concepto u observacion" /></label>
+          <button class="primary-button full">Registrar movimiento</button>
+        </form>
+      </section>
+
       <section class="panel compact-panel">
         <div class="panel-head"><h2>Datos de evento</h2></div>
         <form id="night-control-form" class="form-grid">
@@ -1284,6 +1403,7 @@ function reportesView() {
 const views = {
   home: homeView,
   sell: sellView,
+  analysis: analysisView,
   dashboard: dashboardView,
   control: controlView,
   cajas: cajasView,
@@ -1586,6 +1706,29 @@ function withdrawalsTable() {
   `;
 }
 
+function moneyMovementsTable(items = state.moneyMovements) {
+  if (!items.length) return `<div class="empty">Sin movimientos de dinero.</div>`;
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Hora</th><th>Tipo</th><th>Categoria</th><th>Caja</th><th>Monto</th><th>Detalle</th></tr></thead>
+        <tbody>
+          ${items.slice(0, 40).map((item) => `
+            <tr>
+              <td>${formatDate(item.createdAt)}</td>
+              <td><span class="status ${item.type === "Salida" ? "warn" : ""}">${item.type}</span></td>
+              <td>${item.category}</td>
+              <td>${findBox(item.boxId)?.name || "-"}</td>
+              <td>${money.format(item.amount)}</td>
+              <td>${item.detail || item.person || "-"}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function ticketsTable() {
   if (!state.tickets.length) return `<div class="empty">Sin tickets emitidos.</div>`;
   return `
@@ -1727,9 +1870,23 @@ function markWristbandUsed(sale) {
 function bindViewEvents() {
   document.querySelectorAll("[data-view-jump]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.currentView = button.dataset.viewJump;
-      render();
+      navigateTo(button.dataset.viewJump);
     });
+  });
+
+  document.querySelector("#fab-action")?.addEventListener("click", () => {
+    if (!session.role) return;
+    navigateTo(session.role === "admin" ? "sell" : roles[session.role].startView);
+  });
+
+  document.querySelector("#analysis-filter")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target));
+    session.analysisMode = data.mode;
+    session.analysisDate = data.date;
+    session.analysisMonth = data.month;
+    saveSession();
+    render();
   });
 
   document.querySelectorAll("[data-sell-tab]").forEach((button) => {
@@ -1823,6 +1980,35 @@ function bindViewEvents() {
     });
     logAudit("Caja", `Retiro ${money.format(Number(data.amount))} de ${findBox(data.boxId)?.name || "caja"}`);
     alert("Retiro registrado.");
+    render();
+  });
+
+  document.querySelector("#money-movement-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target));
+    const movement = {
+      id: uid(),
+      type: data.type,
+      boxId: data.boxId,
+      category: data.category,
+      amount: Number(data.amount),
+      payment: data.payment,
+      person: data.person,
+      detail: data.detail,
+      createdAt: new Date().toISOString(),
+    };
+    state.moneyMovements.unshift(movement);
+    if (movement.type === "Salida") {
+      state.cashWithdrawals.unshift({
+        id: uid(),
+        boxId: movement.boxId,
+        amount: movement.amount,
+        reason: `${movement.category}: ${movement.detail || ""}`,
+        createdAt: movement.createdAt,
+      });
+    }
+    logAudit("Dinero", `${movement.type} ${money.format(movement.amount)} - ${movement.category}`);
+    alert("Movimiento registrado.");
     render();
   });
 
@@ -2357,6 +2543,8 @@ function openModal(title, html, onSubmit) {
   modalNode.querySelector("h2").textContent = title;
   modalNode.querySelector(".modal-body").innerHTML = html;
   modalNode.querySelector(".modal-close").addEventListener("click", () => modalNode.remove());
+  modalNode.querySelector(".modal-body").insertAdjacentHTML("beforeend", `<div class="modal-actions"><button class="secondary-button modal-cancel">Cancelar</button></div>`);
+  modalNode.querySelector(".modal-cancel").addEventListener("click", () => modalNode.remove());
   modalNode.addEventListener("click", (event) => {
     if (event.target === modalNode) modalNode.remove();
   });
@@ -2722,7 +2910,7 @@ function openNight() {
     alert("La noche ya esta abierta.");
     return;
   }
-  if (!confirm("Abrir nueva jornada ROXXO? Se conserva configuracion, productos y stock actual; se limpian ventas operativas de la noche anterior.")) return;
+  if (!confirm("Abrir nueva jornada ROXO? Se conserva configuracion, productos y stock actual; se limpian ventas operativas de la noche anterior.")) return;
   state.nightNumber += 1;
   state.nightOpen = true;
   state.openedAt = new Date().toISOString();

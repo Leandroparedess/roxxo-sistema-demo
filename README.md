@@ -1,6 +1,6 @@
-# ROXXO | Sistema de Gestion
+# ROXO | Sistema de Gestion
 
-Demo web para administrar una noche de boliche/bar. Preparado como prueba para sistema Club Roxxo.
+Demo web para administrar una noche de boliche/bar. Preparado como prueba para sistema Club Roxo.
 
 ## Como usar
 
@@ -26,7 +26,7 @@ npm run check
 
 ## Modulos incluidos
 
-- Jornada ROXXO: apertura y cierre de cada noche operativa de fin de semana.
+- Jornada ROXO: apertura y cierre de cada noche operativa de fin de semana.
 - Apertura de caja con responsable, efectivo inicial y hora de apertura.
 - Cierre de caja con arqueo profesional: esperado, contado, diferencia y observacion.
 - Bloqueos operativos: no se puede vender con la jornada o la caja cerrada.
@@ -36,7 +36,12 @@ npm run check
 - Vista Control para manejar la noche desde celular: corte de alcohol, palabra de comanda, retiros, anulaciones y conteo de caja.
 - Interfaz tipo software de gestion: compacta, modular, con barra de estado y navegacion inferior en celular.
 - Interfaz tipo app: Inicio, Vender, Control y Cierre como acciones principales.
+- Navegacion de app con boton Atras, Inicio e historial interno.
 - Pantalla Vender con pestañas simples: Entrada, Barra y Mesa.
+- Logo oficial ROXO integrado en inicio y cabecera.
+- Panel Analisis con filtros por hoy, fecha exacta o mes.
+- Graficos simples de ventas por area y dinero.
+- Movimientos de dinero: ingresos y salidas para proveedores, empleados, mercaderia, ajustes y otros.
 - Arqueo profesional por caja con esperado, contado y diferencia.
 - Tickets/comandas numeradas para ventas de barra.
 - Tickets/comandas numeradas para cobros de mesa.
@@ -72,7 +77,7 @@ Para convertirlo en un sistema online multiusuario real, el siguiente paso es ag
 ## Flujo recomendado
 
 1. Entrar como Administrador.
-2. Ir a Control y abrir/guardar la jornada ROXXO.
+2. Ir a Control y abrir/guardar la jornada ROXO.
 3. Ir a Cajas y abrir cada caja con cajero y efectivo inicial.
 4. Operar ventas desde Ingreso, Bar y Mesas.
 5. Solicitar anulaciones desde Control y aprobar/rechazar.

@@ -1,8 +1,8 @@
 {
-  "name": "roxxo-sistema-demo",
+  "name": "roxo-sistema-demo",
   "version": "1.0.0",
   "private": true,
-  "description": "Demo web estatica para sistema Club Roxxo",
+  "description": "Demo web estatica para sistema Club Roxo",
   "scripts": {
     "check": "node --check app.js"
   }

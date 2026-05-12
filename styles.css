@@ -275,6 +275,187 @@ h3 {
   padding: 12px;
 }
 
+.app-home,
+.close-flow {
+  display: grid;
+  gap: 10px;
+}
+
+.home-hero {
+  background: #101b17;
+  color: white;
+  padding: 18px;
+  border-radius: 10px;
+}
+
+.home-hero h2 {
+  font-size: 30px;
+  margin: 4px 0;
+}
+
+.home-hero span {
+  color: #b8c8bf;
+}
+
+.home-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.home-stat,
+.app-action {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: left;
+  display: grid;
+  gap: 5px;
+}
+
+.home-stat strong {
+  font-size: 22px;
+}
+
+.home-stat span,
+.app-action span,
+.module-title span,
+.flow-step p {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app-action {
+  min-height: 112px;
+}
+
+.app-action.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.app-action.primary span {
+  color: #d6eee8;
+}
+
+.app-action strong {
+  font-size: 22px;
+}
+
+.sell-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: var(--line);
+  gap: 1px;
+  border: 1px solid var(--line);
+}
+
+.sell-tab {
+  border: 0;
+  background: var(--panel);
+  color: var(--muted);
+  min-height: 48px;
+  font-weight: 900;
+}
+
+.sell-tab.active {
+  background: var(--accent);
+  color: white;
+}
+
+.sell-pane {
+  display: none;
+}
+
+.sell-pane.active {
+  display: grid;
+  gap: 10px;
+}
+
+.mobile-module {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.module-title {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.app-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.app-form .full {
+  grid-column: 1 / -1;
+}
+
+.mobile-list {
+  display: grid;
+}
+
+.mobile-row {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+  padding: 13px 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+
+.mobile-row span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.flow-step {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.flow-step > strong {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--panel-2);
+}
+
+.flow-step.current > strong {
+  background: var(--accent);
+  color: white;
+}
+
+.flow-step.done > strong {
+  background: #dcf5e7;
+  color: #16412f;
+}
+
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(160px, 1fr));
@@ -1140,8 +1321,41 @@ tr:last-child td {
   }
 
   .metrics,
-  .pos-grid {
+  .pos-grid,
+  .home-metrics,
+  .action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-hero {
+    padding: 16px;
+  }
+
+  .home-hero h2 {
+    font-size: 26px;
+  }
+
+  .app-action {
+    min-height: 98px;
+  }
+
+  .app-form {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .sell-tabs {
+    position: sticky;
+    top: 58px;
+    z-index: 7;
+  }
+
+  .flow-step {
+    grid-template-columns: 36px 1fr;
+  }
+
+  .flow-step button {
+    grid-column: 1 / -1;
   }
 
   .panel,

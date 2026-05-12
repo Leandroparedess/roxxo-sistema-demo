@@ -35,6 +35,8 @@ npm run check
 - Acceso por puesto ampliado: administrador, caja bebidas, ingreso, puerta, mozos y deposito.
 - Vista Control para manejar la noche desde celular: corte de alcohol, palabra de comanda, retiros, anulaciones y conteo de caja.
 - Interfaz tipo software de gestion: compacta, modular, con barra de estado y navegacion inferior en celular.
+- Interfaz tipo app: Inicio, Vender, Control y Cierre como acciones principales.
+- Pantalla Vender con pestañas simples: Entrada, Barra y Mesa.
 - Arqueo profesional por caja con esperado, contado y diferencia.
 - Tickets/comandas numeradas para ventas de barra.
 - Tickets/comandas numeradas para cobros de mesa.

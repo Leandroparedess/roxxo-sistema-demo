@@ -125,8 +125,8 @@ function saveSession() {
 const roles = {
   admin: {
     name: "Administrador",
-    startView: "dashboard",
-    views: ["dashboard", "control", "cajas", "ingreso", "puerta", "bar", "mesas", "vip", "rrpp", "stock", "gastos", "config", "reportes"],
+    startView: "home",
+    views: ["home", "sell", "control", "close"],
   },
   bar: {
     name: "Caja bebidas",
@@ -281,7 +281,7 @@ function render() {
   }
   const role = roles[session.role];
   document.body.classList.toggle("seller-mode", session.role !== "admin");
-  document.querySelector(".brand span").textContent = `Club Roxxo · ${role.name}`;
+  document.querySelector(".brand span").textContent = `Club Roxxo - ${role.name}`;
   document.querySelector(".top-actions").innerHTML = `
     <button class="secondary-button" id="switch-role">Cambiar usuario</button>
     ${session.role === "admin" ? `<button class="icon-button" id="reset-demo" title="Reiniciar datos">R</button><button class="primary-button" id="close-night">Cerrar noche</button>` : ""}
@@ -292,7 +292,9 @@ function render() {
   });
   document.querySelector("#reset-demo")?.addEventListener("click", resetDemo);
   document.querySelector("#close-night")?.addEventListener("click", closeNight);
-  if (!role.views.includes(state.currentView)) state.currentView = role.startView;
+  const adminInternalViews = ["dashboard", "cajas", "ingreso", "puerta", "bar", "mesas", "vip", "rrpp", "stock", "gastos", "config", "reportes"];
+  const canView = role.views.includes(state.currentView) || (session.role === "admin" && adminInternalViews.includes(state.currentView));
+  if (!canView) state.currentView = role.startView;
   renderNav(role);
   document.querySelectorAll(".nav-link").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === state.currentView);
@@ -360,6 +362,8 @@ function renderNav(role) {
 }
 
 const titles = {
+  home: "Inicio",
+  sell: "Vender",
   dashboard: "Panel",
   control: "Control",
   cajas: "Cajas",
@@ -372,6 +376,7 @@ const titles = {
   stock: "Stock",
   gastos: "Gastos",
   config: "Config",
+  close: "Cierre",
   reportes: "Reportes",
 };
 
@@ -511,6 +516,113 @@ function dashboardView() {
         <button class="primary-button" data-view-jump="ingreso">Vender entrada</button>
       </div>
       ${entrySummaryTable()}
+    </section>
+  `;
+}
+
+function homeView() {
+  const openBoxes = state.boxes.filter((box) => box.status === "open").length;
+  const inside = total(state.entrySales.filter((sale) => sale.usedAt), (sale) => sale.qty);
+  const alerts = state.products.filter((product) => product.stock <= product.minStock).length + state.voidRequests.filter((item) => item.status === "Pendiente").length;
+  return `
+    <section class="app-home">
+      <div class="home-hero">
+        <p class="eyebrow">ROXXO</p>
+        <h2>${state.nightOpen ? "Noche en curso" : "Noche cerrada"}</h2>
+        <span>Jornada #${state.nightNumber} · ${state.openedBy || "Sin responsable"}</span>
+      </div>
+      <div class="home-metrics">
+        <button class="home-stat" data-view-jump="sell"><strong>${money.format(entryRevenue() + barRevenue() + tableRevenue())}</strong><span>Vendido</span></button>
+        <button class="home-stat" data-view-jump="puerta"><strong>${inside}</strong><span>Dentro</span></button>
+        <button class="home-stat" data-view-jump="cajas"><strong>${openBoxes}</strong><span>Cajas</span></button>
+        <button class="home-stat" data-view-jump="control"><strong>${alerts}</strong><span>Alertas</span></button>
+      </div>
+      <div class="action-grid">
+        <button class="app-action primary" data-view-jump="sell"><strong>Vender</strong><span>Entrada, barra o mesa</span></button>
+        <button class="app-action" data-view-jump="control"><strong>Controlar</strong><span>Cajas, anulaciones, precintos</span></button>
+        <button class="app-action" data-view-jump="close"><strong>Cerrar</strong><span>Arqueo y cierre de noche</span></button>
+        <button class="app-action" data-view-jump="reportes"><strong>Reportes</strong><span>Detalle, imprimir y exportar</span></button>
+      </div>
+    </section>
+  `;
+}
+
+function sellView() {
+  return `
+    <section class="sell-tabs">
+      <button class="sell-tab active" data-sell-tab="entry">Entrada</button>
+      <button class="sell-tab" data-sell-tab="bar">Barra</button>
+      <button class="sell-tab" data-sell-tab="table">Mesa</button>
+    </section>
+    <section class="sell-pane active" id="sell-entry">${entryQuickView()}</section>
+    <section class="sell-pane" id="sell-bar">${barView()}</section>
+    <section class="sell-pane" id="sell-table">${tablesQuickView()}</section>
+  `;
+}
+
+function entryQuickView() {
+  return `
+    <section class="mobile-module">
+      <div class="module-title"><h2>Entrada</h2><span>Precintos y puerta</span></div>
+      <form id="entry-form" class="app-form">
+        <label>Tipo<select name="typeId">${state.entryTypes.map((type) => `<option value="${type.id}">${type.name} - ${money.format(type.price)}</option>`).join("")}</select></label>
+        <label>Cantidad<input name="qty" type="number" min="1" value="1" required /></label>
+        <label>Caja<select name="boxId">${boxOptions("Ingreso")}</select></label>
+        <label>Pago<select name="payment">${paymentOptions()}</select></label>
+        <label>RRPP<select name="promoterId"><option value="">Sin RRPP</option>${state.promoters.map((promoter) => `<option value="${promoter.id}">${promoter.name}</option>`).join("")}</select></label>
+        <label>Cliente<input name="guestName" placeholder="Opcional" /></label>
+        <button class="primary-button full">Cobrar entrada</button>
+      </form>
+    </section>
+    <section class="mobile-module compact-only">${wristbandsTable(false)}</section>
+  `;
+}
+
+function tablesQuickView() {
+  return `
+    <section class="mobile-module">
+      <div class="module-title"><h2>Mesas</h2><span>Consumos y cobros</span></div>
+      <div class="mobile-list">
+        ${state.tables.slice(0, 24).map((table) => {
+          const owed = tableTotal(table) - total(table.payments, (payment) => payment.amount);
+          return `<button class="mobile-row" data-open-table="${table.id}">
+            <strong>Mesa ${table.number}</strong>
+            <span>${table.status === "occupied" ? `Saldo ${money.format(owed)}` : "Libre"}</span>
+          </button>`;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function closeView() {
+  const openBoxes = state.boxes.filter((box) => box.status === "open");
+  return `
+    <section class="close-flow">
+      <div class="flow-step ${openBoxes.length ? "current" : "done"}">
+        <strong>1</strong>
+        <div><h2>Cerrar cajas</h2><p>${openBoxes.length ? `${openBoxes.length} cajas abiertas` : "Todas las cajas cerradas"}</p></div>
+        <button class="secondary-button" data-view-jump="cajas">Ver cajas</button>
+      </div>
+      <div class="flow-step">
+        <strong>2</strong>
+        <div><h2>Revisar precintos</h2><p>Vendidos, usados, cortesias y sobrantes</p></div>
+        <button class="secondary-button" data-view-jump="ingreso">Ver</button>
+      </div>
+      <div class="flow-step">
+        <strong>3</strong>
+        <div><h2>Contar stock</h2><p>Comparar teorico contra contado</p></div>
+        <button class="secondary-button" data-view-jump="stock">Ver</button>
+      </div>
+      <div class="flow-step ${!openBoxes.length ? "current" : ""}">
+        <strong>4</strong>
+        <div><h2>Cerrar noche</h2><p>${state.nightOpen ? "Genera cierre final" : "La noche ya esta cerrada"}</p></div>
+        <button class="danger-button" id="close-night-full" ${openBoxes.length || !state.nightOpen ? "disabled" : ""}>Cerrar noche</button>
+      </div>
+    </section>
+    <section class="mobile-module">
+      <div class="module-title"><h2>Resumen</h2><span>Jornada #${state.nightNumber}</span></div>
+      ${boxReportTable()}
     </section>
   `;
 }
@@ -1170,6 +1282,8 @@ function reportesView() {
 }
 
 const views = {
+  home: homeView,
+  sell: sellView,
   dashboard: dashboardView,
   control: controlView,
   cajas: cajasView,
@@ -1182,6 +1296,7 @@ const views = {
   stock: stockView,
   gastos: gastosView,
   config: configView,
+  close: closeView,
   reportes: reportesView,
 };
 
@@ -1614,6 +1729,14 @@ function bindViewEvents() {
     button.addEventListener("click", () => {
       state.currentView = button.dataset.viewJump;
       render();
+    });
+  });
+
+  document.querySelectorAll("[data-sell-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.sellTab;
+      document.querySelectorAll("[data-sell-tab]").forEach((item) => item.classList.toggle("active", item === button));
+      document.querySelectorAll(".sell-pane").forEach((pane) => pane.classList.toggle("active", pane.id === `sell-${tab}`));
     });
   });
 
